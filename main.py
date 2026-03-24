@@ -6,9 +6,9 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters, ContextTypes
 
 RPCS = {
-    "eth": "https://rpc.ankr.com/eth",
-    "bsc": "https://rpc.ankr.com/bsc",
-    "arb": "https://rpc.ankr.com/arbitrum",
+    "eth": "https://eth.api.pocket.network",
+    "bsc": "https://bsc.api.pocket.network",
+    "arb": "https://arb-one.api.pocket.network",
     "base": "https://mainnet.base.org"
 }
 
