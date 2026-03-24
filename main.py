@@ -4,7 +4,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 
 TELEGRAM_TOKEN = os.getenv("8648654865:AAEsThOEU0YiR51MW_C0ptH7DOtIael5kzM")
-OPENROUTER_API_KEY = os.getenv("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")
+OPENROUTER_API_KEY = os.getenv("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")
 
 def ask_ai(prompt):
     try:
