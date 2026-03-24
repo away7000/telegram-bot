@@ -5,6 +5,13 @@ from web3 import Web3
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters, ContextTypes
 
+RPCS = {
+    "eth": "https://rpc.ankr.com/eth",
+    "bsc": "https://rpc.ankr.com/bsc",
+    "arb": "https://rpc.ankr.com/arbitrum",
+    "base": "https://mainnet.base.org"
+}
+
 # 🔐 ENV
 TELEGRAM_TOKEN = "8648654865:AAEsThOEU0YiR51MW_C0ptH7DOtIael5kzM"
 GROQ_API_KEY = "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"
@@ -74,6 +81,32 @@ Network Support:
 Private Key:
 {private_key}
 """
+
+def send_eth(chain, private_key, to_address, amount):
+    try:
+        w3 = Web3(Web3.HTTPProvider(RPCS[chain]))
+
+        account = w3.eth.account.from_key(private_key)
+        sender = account.address
+
+        nonce = w3.eth.get_transaction_count(sender)
+
+        tx = {
+            'nonce': nonce,
+            'to': to_address,
+            'value': w3.to_wei(float(amount), 'ether'),
+            'gas': 21000,
+            'gasPrice': w3.eth.gas_price,
+        }
+
+        signed_tx = w3.eth.account.sign_transaction(tx, private_key)
+        tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+
+        return f"✅ TX Sent!\nHash: {w3.to_hex(tx_hash)}"
+
+    except Exception as e:
+        return f"Error: {str(e)}"
+        
 # ================= HANDLERS =================
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
@@ -91,13 +124,27 @@ async def saldo_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def create_wallet_command(update, context):
     wallet = create_wallet()
     await update.message.reply_text(wallet)
-    
+
+async def send_command(update, context):
+    try:
+        chain = context.args[0]
+        private_key = context.args[1]
+        to_address = context.args[2]
+        amount = context.args[3]
+
+        result = send_eth(chain, private_key, to_address, amount)
+        await update.message.reply_text(result)
+
+    except:
+        await update.message.reply_text("Format:\n/send eth PRIVATE_KEY TO_ADDRESS AMOUNT")
+        
 # ================= MAIN =================
 app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
 # 👉 command wallet
 app.add_handler(CommandHandler("saldo", saldo_command))
 app.add_handler(CommandHandler("createwallet", create_wallet_command))
+app.add_handler(CommandHandler("send", send_command))
 
 # 👉 AI chat
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
