@@ -30,7 +30,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply = ask_ai(user_text)
     await update.message.reply_text(reply)
 
-app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+app = ApplicationBuilder().token(8648654865:AAEsThOEU0YiR51MW_C0ptH7DOtIael5kzM).build()
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
 print("Bot jalan di Railway...")
