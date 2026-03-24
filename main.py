@@ -59,7 +59,21 @@ def create_wallet():
     address = acct.address
     private_key = acct.key.hex()
 
-    return f"Address:\n{address}\n\nPrivate Key:\n{private_key}"
+    return f"""
+🔥 Multi-Chain Wallet
+
+Address:
+{address}
+
+Network Support:
+✅ ETH
+✅ BSC
+✅ ARBITRUM
+✅ BASE
+
+Private Key:
+{private_key}
+"""
 # ================= HANDLERS =================
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
