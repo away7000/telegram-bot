@@ -12,6 +12,13 @@ RPCS = {
     "base": "https://mainnet.base.org"
 }
 
+CHAIN_IDS = {
+    "eth": 1,
+    "bsc": 56,
+    "arb": 42161,
+    "base": 8453
+}
+
 # 🔐 ENV
 TELEGRAM_TOKEN = "8648654865:AAEsThOEU0YiR51MW_C0ptH7DOtIael5kzM"
 GROQ_API_KEY = "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"
@@ -97,11 +104,11 @@ def send_eth(chain, private_key, to_address, amount):
             'value': w3.to_wei(float(amount), 'ether'),
             'gas': 21000,
             'gasPrice': w3.eth.gas_price,
+            'chainId': CHAIN_IDS[chain]  # 🔥 WAJIB
         }
 
         signed_tx = w3.eth.account.sign_transaction(tx, private_key)
 
-        # ✅ FIX DI SINI
         tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
 
         return f"✅ TX Sent!\nHash: {w3.to_hex(tx_hash)}"
