@@ -3,21 +3,21 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 
 TELEGRAM_TOKEN = "8648654865:AAEsThOEU0YiR51MW_C0ptH7DOtIael5kzM"
-OPENROUTER_API_KEY = "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"
+GROQ_API_KEY = "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"
 
 def ask_ai(prompt):
     try:
-        url = "https://openrouter.ai/api/v1/chat/completions"
+        url = "https://api.groq.com/openai/v1/chat/completions"
         
         headers = {
-            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Authorization": f"Bearer {GROQ_API_KEY}",
             "Content-Type": "application/json"
         }
 
         data = {
-            "model": "meta-llama/llama-3-8b-instruct",
+            "model": "llama-3.3-70b-versatile",
             "messages": [
-                {"role": "system", "content": "Kamu adalah AI assistant pintar dan helpful"},
+                {"role": "system", "content": "Kamu adalah AI assistant yang pintar dan membantu"},
                 {"role": "user", "content": prompt}
             ]
         }
