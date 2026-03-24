@@ -1,5 +1,6 @@
 import requests
 import os
+from eth_account import Account
 from web3 import Web3
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters, ContextTypes
@@ -51,7 +52,14 @@ def get_balance(address):
         return f"Saldo: {eth} ETH"
     except Exception as e:
         return f"Error wallet: {str(e)}"
+        
+def create_wallet():
+    acct = Account.create()
+    
+    address = acct.address
+    private_key = acct.key.hex()
 
+    return f"Address:\n{address}\n\nPrivate Key:\n{private_key}"
 # ================= HANDLERS =================
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
@@ -66,11 +74,16 @@ async def saldo_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except:
         await update.message.reply_text("Format: /saldo 0xAddress")
 
+async def create_wallet_command(update, context):
+    wallet = create_wallet()
+    await update.message.reply_text(wallet)
+    
 # ================= MAIN =================
 app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
 # 👉 command wallet
 app.add_handler(CommandHandler("saldo", saldo_command))
+app.add_handler(CommandHandler("createwallet", create_wallet_command))
 
 # 👉 AI chat
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
