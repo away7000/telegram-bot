@@ -7,20 +7,33 @@ TELEGRAM_TOKEN = os.getenv("8648654865:AAEsThOEU0YiR51MW_C0ptH7DOtIael5kzM")
 OPENROUTER_API_KEY = os.getenv("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")
 
 def ask_ai(prompt):
-    url = "https://openrouter.ai/api/v1/chat/completions"
-    
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json"
-    }
+    try:
+        url = "https://openrouter.ai/api/v1/chat/completions"
+        
+        headers = {
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Content-Type": "application/json"
+        }
 
-    data = {
-        "model": "mistralai/mistral-7b-instruct",
-        "messages": [
-            {"role": "system", "content": "Kamu adalah AI crypto assistant"},
-            {"role": "user", "content": prompt}
-        ]
-    }
+        data = {
+            "model": "meta-llama/llama-3-8b-instruct",
+            "messages": [
+                {"role": "user", "content": prompt}
+            ]
+        }
+
+        response = requests.post(url, headers=headers, json=data)
+        result = response.json()
+
+        print(result)
+
+        if "choices" not in result:
+            return f"AI Error: {result}"
+
+        return result["choices"][0]["message"]["content"]
+
+    except Exception as e:
+        return f"Error system: {str(e)}"
 
     response = requests.post(url, headers=headers, json=data)
     return response.json()["choices"][0]["message"]["content"]
