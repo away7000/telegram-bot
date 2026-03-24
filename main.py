@@ -3,7 +3,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 
 TELEGRAM_TOKEN = "8648654865:AAEsThOEU0YiR51MW_C0ptH7DOtIael5kzM"
-OPENROUTER_API_KEY = "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"
+OPENROUTER_API_KEY = "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"
 
 def ask_ai(prompt):
     try:
