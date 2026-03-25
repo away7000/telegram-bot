@@ -9,6 +9,21 @@ from web3 import Web3
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters, ContextTypes
 
+SYSTEM_PROMPT = """
+Kamu adalah AI assistant.
+
+WAJIB:
+- Selalu jawab dalam Bahasa Indonesia
+- Gunakan bahasa santai tapi profesional
+- Jawaban harus jelas, ringkas, dan langsung ke inti
+- Jangan gunakan Bahasa Inggris kecuali istilah teknis (BTC, trading, dll)
+- kayaknya
+- kemungkinan
+- sebaiknya
+
+Jika user pakai bahasa lain, tetap jawab dalam Bahasa Indonesia.
+"""
+
 conn = sqlite3.connect("wallets.db", check_same_thread=False)
 cursor = conn.cursor()
 
@@ -65,7 +80,8 @@ def ask_ai(user_id, user_text):
     memory = get_memory(user_id)
 
     messages = [
-        {"role": "system", "content": skill_prompt}
+        {"role": "system",
+        "content": SYSTEM_PROMPT + "\n\n" + skill_prompt}
     ] + memory + [
         {"role": "user", "content": user_text}
     ]
@@ -113,7 +129,7 @@ def extract_coin_ai(user_text):
             "messages": [
                 {
                     "role": "system",
-                    "content": "Extract only the cryptocurrency name or symbol from the sentence. جواب فقط nama coin saja. Contoh: 'ethereum', 'btc', 'solana'."
+                    "content": "Ekstrak hanya nama atau simbol mata uang kripto dari kalimat tersebut. جواب فقط nama coin saja. Contoh: 'ethereum', 'btc', 'solana'."
                 },
                 {
                     "role": "user",
@@ -344,15 +360,17 @@ def get_chart(asset):
 
 def analyze_chart(asset, price):
     prompt = f"""
-You are a crypto/asset analyst.
+Analisa aset berikut:
 
-Asset: {asset}
-Current price: {price}
+Aset: {asset}
+Harga sekarang: {price}
 
-Give short analysis:
-- Trend (up/down/sideways)
-- Suggestion (buy/sell/wait)
-- Risk warning
+Berikan:
+- Trend (naik/turun/sideways)
+- Rekomendasi (beli/jual/tunggu)
+- Risiko
+
+Jawab dalam Bahasa Indonesia.
 """
 
     response = requests.post(
