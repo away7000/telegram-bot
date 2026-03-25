@@ -186,37 +186,28 @@ def get_metal_price(metal):
 
 def get_gold_idr():
     try:
-        # harga emas USD/oz
-        gold_data = requests.get("https://api.metals.live/v1/spot").json()
-        gold_price_usd = None
+        # 🔥 ambil harga emas via exchangerate (XAU)
+        url = "https://api.exchangerate.host/latest?base=XAU&symbols=USD,IDR"
+        res = requests.get(url).json()
 
-        for item in gold_data:
-            if "gold" in item:
-                gold_price_usd = item["gold"]
-                break
+        usd_per_xau = res["rates"]["USD"]
+        idr_per_xau = res["rates"]["IDR"]
 
-        if not gold_price_usd:
-            return "❌ Gagal ambil harga emas"
-
-        # ambil kurs USD → IDR
-        forex = requests.get("https://api.exchangerate.host/latest?base=USD&symbols=IDR").json()
-        usd_idr = forex["rates"]["IDR"]
-
-        # konversi ke rupiah/gram
-        price_idr_per_gram = (gold_price_usd * usd_idr) / 31.1035
+        # 1 troy ounce = 31.1035 gram
+        price_idr_per_gram = idr_per_xau / 31.1035
 
         return f"""
 🥇 Harga Emas:
 
-USD/oz : ${gold_price_usd}
-USD/IDR : {usd_idr}
+USD/oz : ${usd_per_xau:.2f}
+IDR/oz : Rp {int(idr_per_xau):,}
 
 💰 IDR/gram : Rp {int(price_idr_per_gram):,}
 """
 
     except Exception as e:
         return f"❌ Error: {str(e)}"
-
+        
 def get_forex(pair="USDIDR"):
     url = "https://api.exchangerate.host/latest?base=USD&symbols=IDR"
 
@@ -247,6 +238,75 @@ def get_gold_chart():
     except Exception as e:
         print("Chart error:", e)
         return None
+def get_chart(asset):
+    try:
+        # 🔹 mapping asset
+        if asset in ["emas", "gold"]:
+            coin_id = "gold"
+        else:
+            coin_id = search_coin(asset)
+
+        if not coin_id:
+            return None, None
+
+        url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart?vs_currency=usd&days=7"
+        data = requests.get(url).json()
+
+        prices = data.get("prices", [])
+
+        if not prices:
+            return None, None
+
+        x = [p[0] for p in prices]
+        y = [p[1] for p in prices]
+
+        plt.figure()
+        plt.plot(x, y)
+
+        file_path = f"{asset}_chart.png"
+        plt.savefig(file_path)
+        plt.close()
+
+        return file_path, y[-1]  # last price
+
+    except Exception as e:
+        print("Chart error:", e)
+        return None, None
+
+def analyze_chart(asset, price):
+    prompt = f"""
+You are a crypto/asset analyst.
+
+Asset: {asset}
+Current price: {price}
+
+Give short analysis:
+- Trend (up/down/sideways)
+- Suggestion (buy/sell/wait)
+- Risk warning
+"""
+
+    response = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "model": "llama-3.3-70b-versatile",
+            "messages": [
+                {"role": "system", "content": "You are a trading analyst."},
+                {"role": "user", "content": prompt}
+            ]
+        }
+    )
+
+    data = response.json()
+
+    if "choices" not in data:
+        return "❌ Gagal analisa"
+
+    return data["choices"][0]["message"]["content"]
 
 def get_balance(address):
     try:
@@ -495,6 +555,26 @@ async def handle_message(update, context):
         user_id = str(update.effective_user.id)
         user_text = update.message.text.lower()
 
+        # 📈 CHART SEMUA ASSET
+if "chart" in user_text or "grafik" in user_text:
+
+    words = user_text.split()
+    asset = words[-1]  # ambil kata terakhir
+
+    chart, price = get_chart(asset)
+
+    if chart:
+        analysis = analyze_chart(asset, price)
+
+        await update.message.reply_photo(
+            photo=open(chart, "rb"),
+            caption=f"📈 Grafik {asset.upper()}\n\n{analysis}"
+        )
+        return
+    else:
+        await update.message.reply_text("❌ Gagal ambil chart")
+        return
+        
         # 🔥 CHART EMAS (letakkan PALING ATAS)
         if "chart emas" in user_text or "grafik emas" in user_text:
             chart = get_gold_chart()
