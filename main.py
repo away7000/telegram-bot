@@ -1,9 +1,27 @@
 import requests
 import os
+import sqlite3
+import os
+from cryptography.fernet import Fernet
 from eth_account import Account
 from web3 import Web3
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters, ContextTypes
+
+conn = sqlite3.connect("wallets.db", check_same_thread=False)
+cursor = conn.cursor()
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS wallets (
+    user_id TEXT PRIMARY KEY,
+    address TEXT,
+    private_key TEXT
+)
+""")
+conn.commit()
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+cipher = Fernet(SECRET_KEY)
 
 RPCS = {
     "eth": "https://eth.api.pocket.network",
@@ -67,26 +85,18 @@ def get_balance(address):
     except Exception as e:
         return f"Error wallet: {str(e)}"
         
-def create_wallet():
+def create_wallet(user_id):
     acct = Account.create()
-    
-    address = acct.address
-    private_key = acct.key.hex()
+
+    save_wallet(user_id, acct.address, acct.key.hex())
 
     return f"""
-🔥 Multi-Chain Wallet
+Wallet berhasil dibuat!
 
 Address:
-{address}
+{acct.address}
 
-Network Support:
-✅ ETH
-✅ BSC
-✅ ARBITRUM
-✅ BASE
-
-Private Key:
-{private_key}
+⚠️ Private key disimpan aman
 """
 
 def send_eth(chain, private_key, to_address, amount):
@@ -115,7 +125,28 @@ def send_eth(chain, private_key, to_address, amount):
 
     except Exception as e:
         return f"Error: {str(e)}"
-        
+
+def save_wallet(user_id, address, private_key):
+    encrypted_pk = cipher.encrypt(private_key.encode()).decode()
+
+    cursor.execute(
+        "INSERT OR REPLACE INTO wallets (user_id, address, private_key) VALUES (?, ?, ?)",
+        (user_id, address, encrypted_pk)
+    )
+    conn.commit()
+
+
+def get_wallet(user_id):
+    cursor.execute("SELECT address, private_key FROM wallets WHERE user_id=?", (user_id,))
+    row = cursor.fetchone()
+
+    if row:
+        address, encrypted_pk = row
+        private_key = cipher.decrypt(encrypted_pk.encode()).decode()
+        return address, private_key
+
+    return None, None
+    
 # ================= HANDLERS =================
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
@@ -131,21 +162,49 @@ async def saldo_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Format: /saldo 0xAddress")
 
 async def create_wallet_command(update, context):
-    wallet = create_wallet()
-    await update.message.reply_text(wallet)
+    user_id = str(update.effective_user.id)
+    result = create_wallet(user_id)
+    await update.message.reply_text(result)
 
 async def send_command(update, context):
     try:
+        user_id = str(update.effective_user.id)
+
+        address, private_key = get_wallet(user_id)
+
+        if not private_key:
+            await update.message.reply_text("Buat wallet dulu /createwallet")
+            return
+
         chain = context.args[0]
-        private_key = context.args[1]
-        to_address = context.args[2]
-        amount = context.args[3]
+        to_address = context.args[1]
+        amount = context.args[2]
 
         result = send_eth(chain, private_key, to_address, amount)
         await update.message.reply_text(result)
 
     except:
-        await update.message.reply_text("Format:\n/send eth PRIVATE_KEY TO_ADDRESS AMOUNT")
+        await update.message.reply_text("Format:\n/send eth 0xReceiver 0.01")
+        
+async def buy_command(update, context):
+    try:
+        user_id = str(update.effective_user.id)
+
+        address, private_key = get_wallet(user_id)
+
+        if not private_key:
+            await update.message.reply_text("Buat wallet dulu /createwallet")
+            return
+
+        chain = context.args[0]
+        token = context.args[1]
+        amount = context.args[2]
+
+        result = swap_eth_to_token(chain, private_key, token, amount)
+        await update.message.reply_text(result)
+
+    except:
+        await update.message.reply_text("Format:\n/buy eth TOKEN 0.01")
         
 # ================= MAIN =================
 app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
