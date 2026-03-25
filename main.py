@@ -47,9 +47,6 @@ w3 = Web3(Web3.HTTPProvider(INFURA_URL))
 
 # ================= AI FUNCTION =================
 def ask_ai(user_text):
-    skill_name = route_skill(user_text)
-    skill_prompt = load_skill(skill_name)
-
     response = requests.post(
         "https://api.groq.com/openai/v1/chat/completions",
         headers={
@@ -59,13 +56,19 @@ def ask_ai(user_text):
         json={
             "model": "llama3-70b-8192",
             "messages": [
-                {"role": "system", "content": skill_prompt},
+                {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_text}
             ]
         }
     )
 
-    return response.json()["choices"][0]["message"]["content"]
+    data = response.json()
+    print("AI RESPONSE:", data)  # debug
+
+    if "choices" not in data:
+        return f"AI Error: {data}"
+
+    return data["choices"][0]["message"]["content"]
 
 # ================= WALLET FUNCTION =================
 def get_balance(address):
@@ -166,6 +169,22 @@ def route_skill(user_text):
         return "general"
         
 # ================= HANDLERS =================
+async def ask_command(update, context):
+    try:
+        user_text = " ".join(context.args)
+
+        if not user_text:
+            await update.message.reply_text("Tulis pertanyaan setelah /ask")
+            return
+
+        reply = ask_ai(user_text)
+
+        await update.message.reply_text(reply)
+
+    except Exception as e:
+        print("ERROR /ask:", e)
+        await update.message.reply_text(f"Error: {str(e)}")
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
     reply = ask_ai(user_text)
@@ -274,6 +293,7 @@ app.add_handler(CommandHandler("mywallet", mywallet_command))
 app.add_handler(CommandHandler("exportpk", exportpk_command))
 app.add_handler(CommandHandler("send", send_command))
 app.add_handler(CommandHandler("buy", buy_command))
+app.add_handler(CommandHandler("ask", ask_command))
 
 # 👉 AI chat
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
