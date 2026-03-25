@@ -95,6 +95,37 @@ def ask_ai(user_id, user_text):
     return reply
     
 # ================= WALLET FUNCTION =================
+def extract_coin_ai(user_text):
+    response = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "model": "llama-3.3-70b-versatile",
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "Extract only the cryptocurrency name or symbol from the sentence. جواب فقط nama coin saja. Contoh: 'ethereum', 'btc', 'solana'."
+                },
+                {
+                    "role": "user",
+                    "content": user_text
+                }
+            ]
+        }
+    )
+
+    data = response.json()
+
+    if "choices" not in data:
+        return None
+
+    coin = data["choices"][0]["message"]["content"].strip().lower()
+
+    return coin
+    
 def search_coin(query):
     url = f"https://api.coingecko.com/api/v3/search?query={query}"
     res = requests.get(url).json()
@@ -370,12 +401,14 @@ async def handle_message(update, context):
         user_id = str(update.effective_user.id)
         user_text = update.message.text.lower()
 
-        # 🔥 DETECT HARGA SEMUA COIN
         if any(x in user_text for x in ["harga", "price", "berapa"]):
-            words = user_text.split()
-            coin = words[-1]  # ambil kata terakhir
 
-            reply = get_price_dynamic(coin)
+            coin = extract_coin_ai(user_text)
+
+            if not coin:
+                reply = "❌ Gagal detect coin"
+            else:
+                reply = get_price_dynamic(coin)
 
         else:
             reply = ask_ai(user_id, user_text)
@@ -383,7 +416,7 @@ async def handle_message(update, context):
         await update.message.reply_text(reply)
 
     except Exception as e:
-        print("ERROR MESSAGE:", e)
+        print("ERROR:", e)
         await update.message.reply_text(f"Error: {str(e)}")
         
 # ================= MAIN =================
