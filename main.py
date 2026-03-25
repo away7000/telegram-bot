@@ -12,6 +12,17 @@ conn = sqlite3.connect("wallets.db", check_same_thread=False)
 cursor = conn.cursor()
 
 cursor.execute("""
+CREATE TABLE IF NOT EXISTS memory (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT,
+    role TEXT,
+    content TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+)
+""")
+conn.commit()
+
+cursor.execute("""
 CREATE TABLE IF NOT EXISTS wallets (
     user_id TEXT PRIMARY KEY,
     address TEXT,
@@ -46,9 +57,17 @@ INFURA_URL = "https://mainnet.infura.io/v3/4adf5125bbfa4be0b7ef420369a4fb84"
 w3 = Web3(Web3.HTTPProvider(INFURA_URL))
 
 # ================= AI FUNCTION =================
-def ask_ai(user_text):
+def ask_ai(user_id, user_text):
     skill_name = route_skill(user_text)
     skill_prompt = load_skill(skill_name)
+
+    memory = get_memory(user_id)
+
+    messages = [
+        {"role": "system", "content": skill_prompt}
+    ] + memory + [
+        {"role": "user", "content": user_text}
+    ]
 
     response = requests.post(
         "https://api.groq.com/openai/v1/chat/completions",
@@ -57,11 +76,8 @@ def ask_ai(user_text):
             "Content-Type": "application/json"
         },
         json={
-            "model": "llama-3.1-8b-instant",
-            "messages": [
-                {"role": "system", "content": skill_prompt},  # ✅ ini pengganti SYSTEM_PROMPT
-                {"role": "user", "content": user_text}
-            ]
+            "model": "llama-3.3-70b-versatile",
+            "messages": messages
         }
     )
 
@@ -70,7 +86,14 @@ def ask_ai(user_text):
     if "choices" not in data:
         return f"AI Error: {data}"
 
-    return data["choices"][0]["message"]["content"]
+    reply = data["choices"][0]["message"]["content"]
+
+    # 🔥 simpan ke database
+    save_memory(user_id, "user", user_text)
+    save_memory(user_id, "assistant", reply)
+
+    return reply
+    
 # ================= WALLET FUNCTION =================
 def get_balance(address):
     try:
@@ -168,24 +191,53 @@ def route_skill(user_text):
 
     else:
         return "general"
-        
+
+def save_memory(user_id, role, content):
+    cursor.execute(
+        "INSERT INTO memory (user_id, role, content) VALUES (?, ?, ?)",
+        (user_id, role, content)
+    )
+    conn.commit()
+
+def get_memory(user_id, limit=10):
+    cursor.execute(
+        "SELECT role, content FROM memory WHERE user_id=? ORDER BY id DESC LIMIT ?",
+        (user_id, limit)
+    )
+
+    rows = cursor.fetchall()
+
+    # balik urutan biar kronologis
+    rows.reverse()
+
+    return [{"role": r[0], "content": r[1]} for r in rows]
+    
 # ================= HANDLERS =================
 async def ask_command(update, context):
     try:
+        user_id = str(update.effective_user.id)
         user_text = " ".join(context.args)
 
         if not user_text:
             await update.message.reply_text("Tulis pertanyaan setelah /ask")
             return
 
-        reply = ask_ai(user_text)
+        reply = ask_ai(user_id, user_text)
 
         await update.message.reply_text(reply)
 
     except Exception as e:
-        print("ERROR /ask:", e)
+        print("ERROR:", e)
         await update.message.reply_text(f"Error: {str(e)}")
 
+async def reset_command(update, context):
+    user_id = str(update.effective_user.id)
+
+    cursor.execute("DELETE FROM memory WHERE user_id=?", (user_id,))
+    conn.commit()
+
+    await update.message.reply_text("Memory direset 🧠")
+    
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
     reply = ask_ai(user_text)
@@ -295,6 +347,7 @@ app.add_handler(CommandHandler("exportpk", exportpk_command))
 app.add_handler(CommandHandler("send", send_command))
 app.add_handler(CommandHandler("buy", buy_command))
 app.add_handler(CommandHandler("ask", ask_command))
+app.add_handler(CommandHandler("reset", reset_command))
 
 # 👉 AI chat
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
