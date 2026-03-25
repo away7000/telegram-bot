@@ -186,26 +186,34 @@ def get_metal_price(metal):
 
 def get_gold_idr():
     try:
-        # 🔥 ambil harga emas via exchangerate (XAU)
-        url = "https://api.exchangerate.host/latest?base=XAU&symbols=USD,IDR"
-        res = requests.get(url).json()
+        # 🔥 ambil harga emas via PAXG (proxy gold)
+        gold = requests.get(
+            "https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd"
+        ).json()
 
-        usd_per_xau = res["rates"]["USD"]
-        idr_per_xau = res["rates"]["IDR"]
+        gold_usd = gold["pax-gold"]["usd"]
 
-        # 1 troy ounce = 31.1035 gram
-        price_idr_per_gram = idr_per_xau / 31.1035
+        # 🔥 ambil kurs USD → IDR
+        forex = requests.get(
+            "https://api.exchangerate.host/latest?base=USD&symbols=IDR"
+        ).json()
+
+        usd_idr = forex["rates"]["IDR"]
+
+        # konversi ke rupiah / gram
+        price_idr_per_gram = (gold_usd * usd_idr) / 31.1035
 
         return f"""
-🥇 Harga Emas:
+🥇 Harga Emas (approx):
 
-USD/oz : ${usd_per_xau:.2f}
-IDR/oz : Rp {int(idr_per_xau):,}
+USD/oz : ${gold_usd}
+USD/IDR : {usd_idr}
 
 💰 IDR/gram : Rp {int(price_idr_per_gram):,}
 """
 
     except Exception as e:
+        print("ERROR GOLD:", e)
         return f"❌ Error: {str(e)}"
         
 def get_forex(pair="USDIDR"):
