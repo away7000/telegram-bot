@@ -2,3 +2,4 @@ python-telegram-bot
 requests
 web3
 eth-account
+cryptography
