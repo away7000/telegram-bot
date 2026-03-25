@@ -223,26 +223,30 @@ async def buy_command(update, context):
         await update.message.reply_text("Format:\n/buy eth TOKEN 0.01")
 
 async def mywallet_command(update, context):
-    user_id = str(update.effective_user.id)
+    try:
+        print("MYWALLET KE TRIGGER")  # debug
 
-    address, _ = get_wallet(user_id)
+        user_id = str(update.effective_user.id)
 
-    if not address:
-        await update.message.reply_text("Buat wallet dulu /createwallet")
-        return
+        address, _ = get_wallet(user_id)
 
-    eth_balance = get_balance("eth", address)
-    base_balance = get_balance("base", address)
+        print("ADDRESS:", address)  # debug
 
-    await update.message.reply_text(f"""
+        if not address:
+            await update.message.reply_text("Belum punya wallet. /createwallet dulu")
+            return
+
+        await update.message.reply_text(f"""
 💼 Wallet Kamu:
 
 Address:
 {address}
-
-{eth_balance}
-{base_balance}
 """)
+
+    except Exception as e:
+        print("ERROR MYWALLET:", e)
+        await update.message.reply_text(f"Error: {str(e)}")
+        
 
 async def exportpk_command(update, context):
     user_id = str(update.effective_user.id)
