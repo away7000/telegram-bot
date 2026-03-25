@@ -126,6 +126,35 @@ def extract_coin_ai(user_text):
     coin = data["choices"][0]["message"]["content"].strip().lower()
 
     return coin
+
+def extract_asset_ai(user_text):
+    response = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "model": "llama-3.3-70b-versatile",
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "Extract only the asset name (crypto or gold). Example: btc, eth, sol, gold."
+                },
+                {
+                    "role": "user",
+                    "content": user_text
+                }
+            ]
+        }
+    )
+
+    data = response.json()
+
+    if "choices" not in data:
+        return None
+
+    return data["choices"][0]["message"]["content"].strip().lower()
     
 def search_coin(query):
     url = f"https://api.coingecko.com/api/v3/search?query={query}"
@@ -277,7 +306,7 @@ def get_chart(asset):
     try:
         # 🔹 mapping asset
         if asset in ["emas", "gold"]:
-            coin_id = "gold"
+            coin_id = "pax-gold"
         else:
             coin_id = search_coin(asset)
 
@@ -594,7 +623,7 @@ async def handle_message(update, context):
         if "chart" in user_text or "grafik" in user_text:
 
             words = user_text.split()
-            asset = words[-1]
+            asset = extract_asset_ai(user_text)
 
             chart, price = get_chart(asset)
 
