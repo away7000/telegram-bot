@@ -555,52 +555,35 @@ async def handle_message(update, context):
         user_id = str(update.effective_user.id)
         user_text = update.message.text.lower()
 
-        # 📈 CHART SEMUA ASSET
-if "chart" in user_text or "grafik" in user_text:
+        # 📈 CHART (PALING ATAS)
+        if "chart" in user_text or "grafik" in user_text:
 
-    words = user_text.split()
-    asset = words[-1]  # ambil kata terakhir
+            words = user_text.split()
+            asset = words[-1]
 
-    chart, price = get_chart(asset)
-
-    if chart:
-        analysis = analyze_chart(asset, price)
-
-        await update.message.reply_photo(
-            photo=open(chart, "rb"),
-            caption=f"📈 Grafik {asset.upper()}\n\n{analysis}"
-        )
-        return
-    else:
-        await update.message.reply_text("❌ Gagal ambil chart")
-        return
-        
-        # 🔥 CHART EMAS (letakkan PALING ATAS)
-        if "chart emas" in user_text or "grafik emas" in user_text:
-            chart = get_gold_chart()
+            chart, price = get_chart(asset)
 
             if chart:
+                analysis = analyze_chart(asset, price)
+
                 await update.message.reply_photo(
                     photo=open(chart, "rb"),
-                    caption="📈 Grafik harga emas 7 hari terakhir"
+                    caption=f"📈 Grafik {asset.upper()}\n\n{analysis}"
                 )
                 return
             else:
-                await update.message.reply_text("❌ Gagal buat chart")
+                await update.message.reply_text("❌ Gagal ambil chart")
                 return
 
-        # 🔥 HARGA (semua asset)
+        # 💰 HARGA
         elif any(x in user_text for x in ["harga", "price", "berapa"]):
 
-            # 🥇 EMAS (HARUS DI ATAS crypto)
             if any(x in user_text for x in ["emas", "gold"]):
                 reply = get_gold_idr()
 
-            # 🥈 PERAK (optional)
             elif any(x in user_text for x in ["perak", "silver"]):
                 reply = get_metal_price("silver")
 
-            # 💰 CRYPTO (fallback)
             else:
                 coin = extract_coin_ai(user_text)
 
@@ -609,7 +592,7 @@ if "chart" in user_text or "grafik" in user_text:
                 else:
                     reply = get_price_dynamic(coin)
 
-        # 🤖 DEFAULT AI
+        # 🤖 AI fallback
         else:
             reply = ask_ai(user_id, user_text)
 
