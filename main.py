@@ -149,33 +149,65 @@ def extract_coin_ai(user_text):
     return coin
 
 def extract_asset_ai(user_text):
-    response = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {GROQ_API_KEY}",
-            "Content-Type": "application/json"
-        },
-        json={
-            "model": "llama-3.3-70b-versatile",
-            "messages": [
-                {
-                    "role": "system",
-                    "content": "Extract only the asset name (crypto or gold). Example: btc, eth, sol, gold."
-                },
-                {
-                    "role": "user",
-                    "content": user_text
-                }
-            ]
-        }
-    )
+    text = user_text.lower()
 
-    data = response.json()
+    # ===== manual detect dulu (cepat & stabil)
+    COMMON = [
+        "btc", "bitcoin",
+        "eth", "ethereum",
+        "sol", "solana",
+        "bnb",
+        "xrp",
+        "doge",
+        "arb",
+        "base",
+        "emas",
+        "gold",
+        "perak",
+        "silver"
+    ]
 
-    if "choices" not in data:
+    for c in COMMON:
+        if c in text:
+            return c
+
+    # ===== fallback ke AI
+    try:
+        response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "llama-3.3-70b-versatile",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "Ambil hanya nama aset (crypto atau emas). Jawab 1 kata saja."
+                    },
+                    {
+                        "role": "user",
+                        "content": user_text
+                    }
+                ]
+            }
+        )
+
+        data = response.json()
+
+        if "choices" not in data:
+            return None
+
+        asset = data["choices"][0]["message"]["content"].strip().lower()
+
+        asset = asset.split()[0]
+
+        return asset
+
+    except Exception as e:
+        print("ASSET DETECT ERROR:", e)
         return None
-
-    return data["choices"][0]["message"]["content"].strip().lower()
     
 def search_coin(query):
     url = f"https://api.coingecko.com/api/v3/search?query={query}"
