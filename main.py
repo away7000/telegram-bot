@@ -642,28 +642,27 @@ async def handle_message(update, context):
         user_id = str(update.effective_user.id)
         user_text = update.message.text.lower()
 
-       # 📈 CHART
-if "chart" in user_text or "grafik" in user_text:
+        # 📈 CHART
+        if "chart" in user_text or "grafik" in user_text:
 
-    asset = extract_asset_ai(user_text)
+            asset = extract_asset_ai(user_text)
 
-    chart, price = get_chart(asset)
+            chart, price = get_chart(asset)
 
-    if chart:
-        analysis = analyze_chart(asset, price)
+            if chart:
+                analysis = analyze_chart(asset, price)
 
-        await update.message.reply_photo(
-            photo=open(chart, "rb"),
-            caption=f"📈 Grafik {asset.upper()}"
-        )
+                await update.message.reply_photo(
+                    photo=open(chart, "rb"),
+                    caption=f"📈 Grafik {asset.upper()}"
+                )
 
-        await update.message.reply_text(analysis)
+                await update.message.reply_text(analysis)
+                return
 
-        return
-
-    else:
-        await update.message.reply_text("❌ Gagal ambil chart")
-        return
+            else:
+                await update.message.reply_text("❌ Gagal ambil chart")
+                return
 
         # 💰 HARGA
         elif any(x in user_text for x in ["harga", "price", "berapa"]):
@@ -701,7 +700,7 @@ if "chart" in user_text or "grafik" in user_text:
     except Exception as e:
         print("ERROR:", e)
         await update.message.reply_text(f"Error: {str(e)}")
-
+        
 async def addskill_command(update, context):
     try:
         text = " ".join(context.args)
