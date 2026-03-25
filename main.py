@@ -147,21 +147,16 @@ def get_wallet(user_id):
 
     return None, None
 
-async def mywallet_command(update, context):
-    user_id = str(update.effective_user.id)
+def save_wallet(user_id, address, private_key):
+    print("SAVE WALLET:", user_id, address)
 
-    address, _ = get_wallet(user_id)
+    encrypted_pk = cipher.encrypt(private_key.encode()).decode()
 
-    if not address:
-        await update.message.reply_text("Belum punya wallet. Ketik /createwallet")
-        return
-
-    await update.message.reply_text(f"""
-💼 Wallet Kamu:
-
-Address:
-{address}
-""")
+    cursor.execute(
+        "INSERT OR REPLACE INTO wallets VALUES (?, ?, ?)",
+        (user_id, address, encrypted_pk)
+    )
+    conn.commit()
     
 # ================= HANDLERS =================
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
