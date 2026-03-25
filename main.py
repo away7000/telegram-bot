@@ -643,21 +643,19 @@ async def handle_message(update, context):
         user_text = update.message.text.lower()
 
         # 📈 CHART
-        if "chart" in user_text or "grafik" in user_text:
+        if chart:
+    analysis = analyze_chart(asset, price)
 
-            words = user_text.split()
-            asset = extract_asset_ai(user_text)
+    # kirim gambar dulu
+    await update.message.reply_photo(
+        photo=open(chart, "rb"),
+        caption=f"📈 Grafik {asset.upper()}"
+    )
 
-            chart, price = get_chart(asset)
+    # kirim analisa terpisah (biar gak kena limit)
+    await update.message.reply_text(analysis)
 
-            if chart:
-                analysis = analyze_chart(asset, price)
-
-                await update.message.reply_photo(
-                    photo=open(chart, "rb"),
-                    caption=f"📈 Grafik {asset.upper()}\n\n{analysis}"
-                )
-                return
+    return
             else:
                 await update.message.reply_text("❌ Gagal ambil chart")
                 return
