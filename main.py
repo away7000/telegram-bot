@@ -2,6 +2,7 @@ import requests
 import os
 import sqlite3
 import os
+import matplotlib.pyplot as plt
 from cryptography.fernet import Fernet
 from eth_account import Account
 from web3 import Web3
@@ -137,7 +138,6 @@ def search_coin(query):
 
     return coins[0]["id"]
 
-
 def get_price_dynamic(query):
     coin_id = search_coin(query)
 
@@ -153,7 +153,101 @@ def get_price_dynamic(query):
     price = res[coin_id]["usd"]
 
     return f"💰 Harga {query.upper()}: ${price}"
-    
+
+def get_metal_price(metal):
+    metals = {
+        "emas": "gold",
+        "gold": "gold",
+        "xau": "gold",
+        "perak": "silver",
+        "silver": "silver",
+        "xag": "silver"
+    }
+
+    m = metals.get(metal.lower())
+
+    if not m:
+        return None
+
+    url = "https://api.metals.live/v1/spot"
+
+    try:
+        res = requests.get(url).json()
+
+        for item in res:
+            if m in item:
+                price = item[m]
+                return f"💰 Harga {m.upper()}: ${price}/oz"
+
+        return "❌ Gagal ambil harga"
+
+    except:
+        return "❌ Error ambil data"
+
+def get_gold_idr():
+    try:
+        # harga emas USD/oz
+        gold_data = requests.get("https://api.metals.live/v1/spot").json()
+        gold_price_usd = None
+
+        for item in gold_data:
+            if "gold" in item:
+                gold_price_usd = item["gold"]
+                break
+
+        if not gold_price_usd:
+            return "❌ Gagal ambil harga emas"
+
+        # ambil kurs USD → IDR
+        forex = requests.get("https://api.exchangerate.host/latest?base=USD&symbols=IDR").json()
+        usd_idr = forex["rates"]["IDR"]
+
+        # konversi ke rupiah/gram
+        price_idr_per_gram = (gold_price_usd * usd_idr) / 31.1035
+
+        return f"""
+🥇 Harga Emas:
+
+USD/oz : ${gold_price_usd}
+USD/IDR : {usd_idr}
+
+💰 IDR/gram : Rp {int(price_idr_per_gram):,}
+"""
+
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+
+def get_forex(pair="USDIDR"):
+    url = "https://api.exchangerate.host/latest?base=USD&symbols=IDR"
+
+    res = requests.get(url).json()
+    rate = res["rates"]["IDR"]
+
+    return f"💱 USD/IDR: {rate}"
+
+def get_gold_chart():
+    try:
+        url = "https://api.coingecko.com/api/v3/coins/gold/market_chart?vs_currency=usd&days=7"
+        data = requests.get(url).json()
+
+        prices = data["prices"]
+
+        x = [p[0] for p in prices]
+        y = [p[1] for p in prices]
+
+        plt.figure()
+        plt.plot(x, y)
+
+        file_path = "gold_chart.png"
+        plt.savefig(file_path)
+        plt.close()
+
+        return file_path
+
+    except Exception as e:
+        print("Chart error:", e)
+        return None
+
 def get_balance(address):
     try:
         balance = w3.eth.get_balance(address)
@@ -401,22 +495,48 @@ async def handle_message(update, context):
         user_id = str(update.effective_user.id)
         user_text = update.message.text.lower()
 
-        if any(x in user_text for x in ["harga", "price", "berapa"]):
+        # 🔥 CHART EMAS (letakkan PALING ATAS)
+        if "chart emas" in user_text or "grafik emas" in user_text:
+            chart = get_gold_chart()
 
-            coin = extract_coin_ai(user_text)
-
-            if not coin:
-                reply = "❌ Gagal detect coin"
+            if chart:
+                await update.message.reply_photo(
+                    photo=open(chart, "rb"),
+                    caption="📈 Grafik harga emas 7 hari terakhir"
+                )
+                return
             else:
-                reply = get_price_dynamic(coin)
+                await update.message.reply_text("❌ Gagal buat chart")
+                return
 
+        # 🔥 HARGA (semua asset)
+        elif any(x in user_text for x in ["harga", "price", "berapa"]):
+
+            # 🥇 EMAS (HARUS DI ATAS crypto)
+            if any(x in user_text for x in ["emas", "gold"]):
+                reply = get_gold_idr()
+
+            # 🥈 PERAK (optional)
+            elif any(x in user_text for x in ["perak", "silver"]):
+                reply = get_metal_price("silver")
+
+            # 💰 CRYPTO (fallback)
+            else:
+                coin = extract_coin_ai(user_text)
+
+                if not coin:
+                    reply = "❌ Gagal detect coin"
+                else:
+                    reply = get_price_dynamic(coin)
+
+        # 🤖 DEFAULT AI
         else:
             reply = ask_ai(user_id, user_text)
 
         await update.message.reply_text(reply)
 
     except Exception as e:
-        print("ERROR:", e)
+        print("ERROR MESSAGE:", e)
         await update.message.reply_text(f"Error: {str(e)}")
         
 # ================= MAIN =================
