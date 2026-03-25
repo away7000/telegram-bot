@@ -146,6 +146,22 @@ def get_wallet(user_id):
         return address, private_key
 
     return None, None
+
+async def mywallet_command(update, context):
+    user_id = str(update.effective_user.id)
+
+    address, _ = get_wallet(user_id)
+
+    if not address:
+        await update.message.reply_text("Belum punya wallet. Ketik /createwallet")
+        return
+
+    await update.message.reply_text(f"""
+💼 Wallet Kamu:
+
+Address:
+{address}
+""")
     
 # ================= HANDLERS =================
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -205,7 +221,44 @@ async def buy_command(update, context):
 
     except:
         await update.message.reply_text("Format:\n/buy eth TOKEN 0.01")
-        
+
+async def mywallet_command(update, context):
+    user_id = str(update.effective_user.id)
+
+    address, _ = get_wallet(user_id)
+
+    if not address:
+        await update.message.reply_text("Buat wallet dulu /createwallet")
+        return
+
+    eth_balance = get_balance("eth", address)
+    base_balance = get_balance("base", address)
+
+    await update.message.reply_text(f"""
+💼 Wallet Kamu:
+
+Address:
+{address}
+
+{eth_balance}
+{base_balance}
+""")
+
+async def exportpk_command(update, context):
+    user_id = str(update.effective_user.id)
+
+    address, private_key = get_wallet(user_id)
+
+    if not private_key:
+        await update.message.reply_text("Wallet belum ada")
+        return
+
+    await update.message.reply_text(f"""
+⚠️ PRIVATE KEY (JANGAN DIBAGIKAN):
+
+{private_key}
+""")
+    
 # ================= MAIN =================
 app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
@@ -213,6 +266,7 @@ app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 app.add_handler(CommandHandler("saldo", saldo_command))
 app.add_handler(CommandHandler("createwallet", create_wallet_command))
 app.add_handler(CommandHandler("send", send_command))
+app.add_handler(CommandHandler("mywallet", mywallet_command))
 
 # 👉 AI chat
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
