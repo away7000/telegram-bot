@@ -643,26 +643,30 @@ async def handle_message(update, context):
         user_text = update.message.text.lower()
 
         # 📈 CHART
-        if "chart" in user_text or "grafik" in user_text:
+            if "chart" in user_text or "grafik" in user_text:
 
             asset = extract_asset_ai(user_text)
 
+             if not asset:
+             await update.message.reply_text("❌ Gagal detect asset")
+             return
+
             chart, price = get_chart(asset)
 
-            if chart:
-                analysis = analyze_chart(asset, price)
+             if chart:
+             analysis = analyze_chart(asset, price)
 
-                await update.message.reply_photo(
-                    photo=open(chart, "rb"),
-                    caption=f"📈 Grafik {asset.upper()}"
-                )
+             await update.message.reply_photo(
+            photo=open(chart, "rb"),
+            caption=f"📈 Grafik {asset.upper()}"
+            )
 
-                await update.message.reply_text(analysis)
-                return
+            await update.message.reply_text(analysis)
+            return
 
             else:
-                await update.message.reply_text("❌ Gagal ambil chart")
-                return
+            await update.message.reply_text("❌ Gagal ambil chart")
+            return
 
         # 💰 HARGA
         elif any(x in user_text for x in ["harga", "price", "berapa"]):
