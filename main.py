@@ -186,21 +186,30 @@ def get_metal_price(metal):
 
 def get_gold_idr():
     try:
-        # 🔥 ambil harga emas via PAXG (proxy gold)
-        gold = requests.get(
-            "https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd"
+        # 🔥 ambil harga emas (PAXG)
+        gold_res = requests.get(
+            "https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd",
+            timeout=5
         ).json()
 
-        gold_usd = gold["pax-gold"]["usd"]
+        if "pax-gold" not in gold_res:
+            return "❌ Gagal ambil harga emas"
+
+        gold_usd = gold_res["pax-gold"]["usd"]
 
         # 🔥 ambil kurs USD → IDR
-        forex = requests.get(
-            "https://api.exchangerate.host/latest?base=USD&symbols=IDR"
+        forex_res = requests.get(
+            "https://open.er-api.com/v6/latest/USD",
+            timeout=5
         ).json()
 
-        usd_idr = forex["rates"]["IDR"]
+        # ✅ VALIDASI
+        if forex_res.get("result") != "success":
+            return "❌ Gagal ambil kurs USD/IDR"
 
-        # konversi ke rupiah / gram
+        usd_idr = forex_res["rates"]["IDR"]
+
+        # 🔥 konversi ke rupiah / gram
         price_idr_per_gram = (gold_usd * usd_idr) / 31.1035
 
         return f"""
@@ -214,6 +223,24 @@ USD/IDR : {usd_idr}
 
     except Exception as e:
         print("ERROR GOLD:", e)
+        return f"❌ Error: {str(e)}"
+
+def convert_usd_to_idr(amount):
+    try:
+        res = requests.get(
+            "https://open.er-api.com/v6/latest/USD",
+            timeout=5
+        ).json()
+
+        if res.get("result") != "success":
+            return "❌ Gagal ambil kurs"
+
+        rate = res["rates"]["IDR"]
+        result = amount * rate
+
+        return f"💱 ${amount} = Rp {int(result):,}"
+
+    except Exception as e:
         return f"❌ Error: {str(e)}"
         
 def get_forex(pair="USDIDR"):
@@ -599,6 +626,20 @@ async def handle_message(update, context):
                     reply = "❌ Gagal detect coin"
                 else:
                     reply = get_price_dynamic(coin)
+
+        # 💱 KONVERSI USD → IDR
+elif "usd" in user_text and "idr" in user_text:
+
+    words = user_text.split()
+
+    # cari angka
+    amount = 1
+    for w in words:
+        if w.replace(".", "", 1).isdigit():
+            amount = float(w)
+            break
+
+    reply = convert_usd_to_idr(amount)
 
         # 🤖 AI fallback
         else:
