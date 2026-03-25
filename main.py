@@ -95,6 +95,34 @@ def ask_ai(user_id, user_text):
     return reply
     
 # ================= WALLET FUNCTION =================
+def search_coin(query):
+    url = f"https://api.coingecko.com/api/v3/search?query={query}"
+    res = requests.get(url).json()
+
+    coins = res.get("coins", [])
+
+    if not coins:
+        return None
+
+    return coins[0]["id"]
+
+
+def get_price_dynamic(query):
+    coin_id = search_coin(query)
+
+    if not coin_id:
+        return "❌ Coin tidak ditemukan"
+
+    url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd"
+    res = requests.get(url).json()
+
+    if coin_id not in res:
+        return "❌ Gagal ambil harga"
+
+    price = res[coin_id]["usd"]
+
+    return f"💰 Harga {query.upper()}: ${price}"
+    
 def get_balance(address):
     try:
         balance = w3.eth.get_balance(address)
@@ -340,9 +368,17 @@ async def exportpk_command(update, context):
 async def handle_message(update, context):
     try:
         user_id = str(update.effective_user.id)
-        user_text = update.message.text
+        user_text = update.message.text.lower()
 
-        reply = ask_ai(user_id, user_text)
+        # 🔥 DETECT HARGA SEMUA COIN
+        if any(x in user_text for x in ["harga", "price", "berapa"]):
+            words = user_text.split()
+            coin = words[-1]  # ambil kata terakhir
+
+            reply = get_price_dynamic(coin)
+
+        else:
+            reply = ask_ai(user_id, user_text)
 
         await update.message.reply_text(reply)
 
