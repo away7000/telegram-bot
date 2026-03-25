@@ -46,35 +46,26 @@ INFURA_URL = "https://mainnet.infura.io/v3/4adf5125bbfa4be0b7ef420369a4fb84"
 w3 = Web3(Web3.HTTPProvider(INFURA_URL))
 
 # ================= AI FUNCTION =================
-def ask_ai(prompt):
-    try:
-        url = "https://api.groq.com/openai/v1/chat/completions"
-        
-        headers = {
+def ask_ai(user_text):
+    skill_name = route_skill(user_text)
+    skill_prompt = load_skill(skill_name)
+
+    response = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={
             "Authorization": f"Bearer {GROQ_API_KEY}",
             "Content-Type": "application/json"
-        }
-
-        data = {
-            "model": "llama-3.3-70b-versatile",
+        },
+        json={
+            "model": "llama3-70b-8192",
             "messages": [
-                {"role": "system", "content": "Kamu adalah AI crypto assistant"},
-                {"role": "user", "content": prompt}
+                {"role": "system", "content": skill_prompt},
+                {"role": "user", "content": user_text}
             ]
         }
+    )
 
-        response = requests.post(url, headers=headers, json=data)
-        result = response.json()
-
-        print(result)
-
-        if "choices" not in result:
-            return f"AI Error: {result}"
-
-        return result["choices"][0]["message"]["content"]
-
-    except Exception as e:
-        return f"Error: {str(e)}"
+    return response.json()["choices"][0]["message"]["content"]
 
 # ================= WALLET FUNCTION =================
 def get_balance(address):
@@ -157,7 +148,23 @@ def save_wallet(user_id, address, private_key):
         (user_id, address, encrypted_pk)
     )
     conn.commit()
-    
+
+def load_skill(name):
+    with open(f"skills/{name}.md", "r") as f:
+        return f.read()
+
+def route_skill(user_text):
+    text = user_text.lower()
+
+    if any(x in text for x in ["buy", "sell", "token", "price", "trading"]):
+        return "trading"
+
+    elif any(x in text for x in ["wallet", "send", "address", "balance"]):
+        return "wallet"
+
+    else:
+        return "general"
+        
 # ================= HANDLERS =================
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
