@@ -337,6 +337,19 @@ async def exportpk_command(update, context):
 {private_key}
 """)
     
+async def handle_message(update, context):
+    try:
+        user_id = str(update.effective_user.id)
+        user_text = update.message.text
+
+        reply = ask_ai(user_id, user_text)
+
+        await update.message.reply_text(reply)
+
+    except Exception as e:
+        print("ERROR MESSAGE:", e)
+        await update.message.reply_text(f"Error: {str(e)}")
+        
 # ================= MAIN =================
 app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
