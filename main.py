@@ -590,7 +590,7 @@ async def handle_message(update, context):
         user_id = str(update.effective_user.id)
         user_text = update.message.text.lower()
 
-        # 📈 CHART (PALING ATAS)
+        # 📈 CHART
         if "chart" in user_text or "grafik" in user_text:
 
             words = user_text.split()
@@ -616,9 +616,6 @@ async def handle_message(update, context):
             if any(x in user_text for x in ["emas", "gold"]):
                 reply = get_gold_idr()
 
-            elif any(x in user_text for x in ["perak", "silver"]):
-                reply = get_metal_price("silver")
-
             else:
                 coin = extract_coin_ai(user_text)
 
@@ -628,18 +625,17 @@ async def handle_message(update, context):
                     reply = get_price_dynamic(coin)
 
         # 💱 KONVERSI USD → IDR
-elif "usd" in user_text and "idr" in user_text:
+        elif "usd" in user_text and "idr" in user_text:
 
-    words = user_text.split()
+            words = user_text.split()
 
-    # cari angka
-    amount = 1
-    for w in words:
-        if w.replace(".", "", 1).isdigit():
-            amount = float(w)
-            break
+            amount = 1
+            for w in words:
+                if w.replace(".", "", 1).isdigit():
+                    amount = float(w)
+                    break
 
-    reply = convert_usd_to_idr(amount)
+            reply = convert_usd_to_idr(amount)
 
         # 🤖 AI fallback
         else:
@@ -648,7 +644,7 @@ elif "usd" in user_text and "idr" in user_text:
         await update.message.reply_text(reply)
 
     except Exception as e:
-        print("ERROR MESSAGE:", e)
+        print("ERROR:", e)
         await update.message.reply_text(f"Error: {str(e)}")
         
 # ================= MAIN =================
