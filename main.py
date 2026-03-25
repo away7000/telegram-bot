@@ -263,10 +263,11 @@ async def exportpk_command(update, context):
 app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
 # 👉 command wallet
-app.add_handler(CommandHandler("saldo", saldo_command))
 app.add_handler(CommandHandler("createwallet", create_wallet_command))
-app.add_handler(CommandHandler("send", send_command))
 app.add_handler(CommandHandler("mywallet", mywallet_command))
+app.add_handler(CommandHandler("exportpk", exportpk_command))
+app.add_handler(CommandHandler("send", send_command))
+app.add_handler(CommandHandler("buy", buy_command))
 
 # 👉 AI chat
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
