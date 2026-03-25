@@ -94,8 +94,13 @@ def ask_ai(user_id, user_text):
     save_memory(user_id, "assistant", reply)
 
     return reply
-    
+
+
 # ================= WALLET FUNCTION =================
+def save_skill_from_text(skill_name, content):
+    with open(f"skills/{skill_name}.md", "w") as f:
+        f.write(content)
+        
 def extract_coin_ai(user_text):
     response = requests.post(
         "https://api.groq.com/openai/v1/chat/completions",
@@ -675,6 +680,20 @@ async def handle_message(update, context):
     except Exception as e:
         print("ERROR:", e)
         await update.message.reply_text(f"Error: {str(e)}")
+
+async def addskill_command(update, context):
+    try:
+        text = " ".join(context.args)
+
+        # format: /addskill defi | isi prompt
+        name, content = text.split("|", 1)
+
+        save_skill_from_text(name.strip(), content.strip())
+
+        await update.message.reply_text(f"✅ Skill {name} berhasil ditambahkan")
+
+    except Exception as e:
+        await update.message.reply_text("Format salah. Gunakan: /addskill nama | isi")
         
 # ================= MAIN =================
 app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
@@ -687,6 +706,7 @@ app.add_handler(CommandHandler("send", send_command))
 app.add_handler(CommandHandler("buy", buy_command))
 app.add_handler(CommandHandler("ask", ask_command))
 app.add_handler(CommandHandler("reset", reset_command))
+app.add_handler(CommandHandler("addskill", addskill_command))
 
 # 👉 AI chat
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
