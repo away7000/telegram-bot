@@ -65,6 +65,9 @@ CHAIN_IDS = {
 }
 
 # 🔐 ENV
+OPENROUTER_API_KEY = "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"
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+MODEL = "meta-llama/llama-3-8b-instruct"
 TELEGRAM_TOKEN = "8648654865:AAEsThOEU0YiR51MW_C0ptH7DOtIael5kzM"
 GROQ_API_KEY = "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"
 
@@ -74,38 +77,43 @@ w3 = Web3(Web3.HTTPProvider(INFURA_URL))
 
 # ================= AI FUNCTION =================
 def ask_ai(user_id, user_text):
+
     skill_name = route_skill(user_text)
     skill_prompt = load_skill(skill_name)
 
     memory = get_memory(user_id)
 
     messages = [
-        {"role": "system",
-        "content": SYSTEM_PROMPT + "\n\n" + skill_prompt}
+        {
+            "role": "system",
+            "content": SYSTEM_PROMPT + "\n\n" + skill_prompt
+        }
     ] + memory + [
         {"role": "user", "content": user_text}
     ]
 
     response = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
+        OPENROUTER_URL,
         headers={
-            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
             "Content-Type": "application/json"
         },
         json={
-            "model": "llama-3.3-70b-versatile",
+            "model": MODEL,
             "messages": messages
-        }
+        },
+        timeout=15
     )
 
     data = response.json()
 
+    print("AI:", data)
+
     if "choices" not in data:
-        return f"AI Error: {data}"
+        return "AI Error"
 
     reply = data["choices"][0]["message"]["content"]
 
-    # 🔥 simpan ke database
     save_memory(user_id, "user", user_text)
     save_memory(user_id, "assistant", reply)
 
@@ -149,42 +157,20 @@ def extract_coin_ai(user_text):
     return coin
 
 def extract_asset_ai(user_text):
-    text = user_text.lower()
 
-    # ===== manual detect dulu (cepat & stabil)
-    COMMON = [
-        "btc", "bitcoin",
-        "eth", "ethereum",
-        "sol", "solana",
-        "bnb",
-        "xrp",
-        "doge",
-        "arb",
-        "base",
-        "emas",
-        "gold",
-        "perak",
-        "silver"
-    ]
-
-    for c in COMMON:
-        if c in text:
-            return c
-
-    # ===== fallback ke AI
     try:
         response = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
+            OPENROUTER_URL,
             headers={
-                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
                 "Content-Type": "application/json"
             },
             json={
-                "model": "llama-3.3-70b-versatile",
+                "model": MODEL,
                 "messages": [
                     {
                         "role": "system",
-                        "content": "Ambil hanya nama aset (crypto atau emas). Jawab 1 kata saja."
+                        "content": "Ambil hanya nama aset. Jawab 1 kata."
                     },
                     {
                         "role": "user",
@@ -201,12 +187,9 @@ def extract_asset_ai(user_text):
 
         asset = data["choices"][0]["message"]["content"].strip().lower()
 
-        asset = asset.split()[0]
+        return asset.split()[0]
 
-        return asset
-
-    except Exception as e:
-        print("ASSET DETECT ERROR:", e)
+    except:
         return None
     
 def search_coin(query):
@@ -391,41 +374,40 @@ def get_chart(asset):
         return None, None
 
 def analyze_chart(asset, price):
-    prompt = f"""
-Analisa aset berikut:
+    try:
+        prompt = f"""
+Analisa aset berikut.
 
 Aset: {asset}
-Harga sekarang: {price}
+Harga: {price}
 
-Berikan:
-- Trend (naik/turun/sideways)
-- Rekomendasi (beli/jual/tunggu)
-- Risiko
-
-Jawab dalam Bahasa Indonesia.
+Jawab singkat dalam Bahasa Indonesia.
 """
 
-    response = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {GROQ_API_KEY}",
-            "Content-Type": "application/json"
-        },
-        json={
-            "model": "llama-3.3-70b-versatile",
-            "messages": [
-                {"role": "system", "content": "You are a trading analyst."},
-                {"role": "user", "content": prompt}
-            ]
-        }
-    )
+        response = requests.post(
+            OPENROUTER_URL,
+            headers={
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": MODEL,
+                "messages": [
+                    {"role": "user", "content": prompt}
+                ]
+            }
+        )
 
-    data = response.json()
+        data = response.json()
 
-    if "choices" not in data:
-        return "❌ Gagal analisa"
+        if "choices" not in data:
+            return "Analisa gagal"
 
-    return data["choices"][0]["message"]["content"]
+        return data["choices"][0]["message"]["content"]
+
+    except Exception as e:
+        print(e)
+        return "Analisa error"
 
 def get_balance(address):
     try:
