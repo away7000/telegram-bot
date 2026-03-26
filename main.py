@@ -65,7 +65,7 @@ CHAIN_IDS = {
 }
 
 # 🔐 ENV
-OPENROUTER_API_KEY = "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"
+OPENROUTER_API_KEY = "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"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 MODEL = "meta-llama/llama-3-8b-instruct"
 TELEGRAM_TOKEN = "8648654865:AAEsThOEU0YiR51MW_C0ptH7DOtIael5kzM"
